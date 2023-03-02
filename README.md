@@ -1,7 +1,7 @@
 # Kubernetes-Mastery
 Advanced Techniques and Best Practices for Efficient Container Orchestration
 
-## 1. Install Docker on Ubuntu:AWS Lightsail and verify it works:
+## 1. Install Docker on **Ubuntu:AWS Lightsail** and verify it works:
 
 #### Update the package index:
 
@@ -52,7 +52,7 @@ sudo docker run hello-world
 docker version
 ```
 
-## 2. Install Kubernetes on a Ubuntu:AWS Lightsail machine and verify its installation:
+## 2. Install Kubernetes on a **Ubuntu:AWS Lightsail** machine and verify its installation:
 
 #### Update the system packages:
 ```bash
