@@ -51,3 +51,49 @@ sudo docker run hello-world
 ```bash
 docker version
 ```
+
+## 2. Install Kubernetes on a Linux Ubuntu machine and verify its installation:
+
+#### Update the system packages:
+```bash
+sudo apt-get update
+```
+
+#### Install dependencies:
+```bash
+sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common
+```
+
+#### Add the Kubernetes signing key:
+```bash
+curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
+```
+
+#### Add the Kubernetes repository:
+```bash
+sudo add-apt-repository "deb https://apt.kubernetes.io/ kubernetes-xenial main"
+```
+
+#### Update the system packages again:
+```bash
+sudo apt-get update
+```
+
+#### Install Kubernetes:
+```bash
+sudo apt-get install -y kubelet kubeadm kubectl
+```
+
+#### Initialize the cluster:
+```bash
+sudo kubeadm init
+```
+
+#### Set up Kubernetes networking:
+```bash
+sudo kubectl apply -f https://docs.projectcalico.org/v3.9/manifests/calico.yaml
+```
+
+#### Verify that Kubernetes is running:
+```bash
+sudo kubectl get pods --all-namespaces```
