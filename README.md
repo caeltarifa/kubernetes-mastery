@@ -127,7 +127,7 @@ sudo apt-get install -y apt-transport-https ca-certificates curl
 #### Add the Kubernetes signing key:
 ```bash
 curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
-#### ```
+```
 
 #### Add the Kubernetes repository:
 ```bash
