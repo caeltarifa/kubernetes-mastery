@@ -100,32 +100,18 @@ sudo kubectl get pods --all-namespaces
 ```
 
 ## 3. Some commonly used commands to monitor the state of Kubernetes:
-```bash
-kubectl get nodes: This command displays the status of all the nodes in the Kubernetes cluster.
-```
+```kubectl get nodes```: This command displays the status of all the nodes in the Kubernetes cluster.
 
-```bash
-kubectl get pods: This command displays the status of all the pods in the Kubernetes cluster.
-```
+```kubectl get pods```: This command displays the status of all the pods in the Kubernetes cluster.
 
-```bash
-kubectl get services: This command displays the status of all the services in the Kubernetes cluster.
-```
+```kubectl get services```: This command displays the status of all the services in the Kubernetes cluster.
 
-```bash
-kubectl get deployments: This command displays the status of all the deployments in the Kubernetes cluster.
-```
+```kubectl get deployments```: This command displays the status of all the deployments in the Kubernetes cluster.
 
-```bash
-kubectl get events: This command displays the recent events in the Kubernetes cluster.
-```
+```kubectl get events```: This command displays the recent events in the Kubernetes cluster.
 
-```bash
-kubectl logs <pod-name>: This command displays the logs of a specific pod.
-```
+```kubectl logs <pod-name>```: This command displays the logs of a specific pod.
 
-```bash
-kubectl describe <object-type> <object-name>: This command provides a detailed description of a specific Kubernetes object, such as a pod, service, deployment, or node.
-```
+```kubectl describe <object-type> <object-name>```: This command provides a detailed description of a specific Kubernetes object, such as a pod, service, deployment, or node.
 
 These commands help to monitor the state of Kubernetes and ensure that everything is working as expected.
