@@ -161,3 +161,20 @@ sudo kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/v0.14.0/D
 ```bash
 sudo kubectl get nodes
 ```
+
+## 5. Commands to install Docker-compose on Ubuntu operating system:
+
+#### Download the Docker Compose binary into the /usr/local/bin directory and the next command downloads the latest version of Docker Compose for the system architecture:
+```bash
+sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+```
+
+#### Apply executable permissions to the Docker Compose binary:
+```bash
+sudo chmod +x /usr/local/bin/docker-compose
+```
+
+#### Verify the installation:
+```bash
+docker-compose --version
+```
