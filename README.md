@@ -178,3 +178,226 @@ sudo chmod +x /usr/local/bin/docker-compose
 ```bash
 docker-compose --version
 ```
+
+## 6. Biosoft multicontainers on Ubuntu operating system:
+
+#### Showing geonodo configuring
+```bash
+
+PORT ?= 80
+CONTAINER_NAME = biosoftv8
+IMAGE_NAME = biosoftv8
+IMAGE_VERSION = latest
+NAME ?= superadmin
+EMAIL ?=superadmin@geonodo.dev
+PHP_IDE_CONFIG=-e PHP_IDE_CONFIG='serverName=biosoft-core'
+
+help:
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "\033[36m%-25s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+
+build: ## Build docker image from dockerfile
+	docker build --pull --rm -f ".docker/Dockerfile" -t ${IMAGE_NAME}:${IMAGE_VERSION} .
+
+build-nc: ## Build docker image without cache
+	docker build --no-cache --pull --rm -f ".docker/Dockerfile" -t ${IMAGE_NAME}:${IMAGE_VERSION} .
+
+start: ## Run container from built image
+	docker run --rm -it -d -p ${PORT}:80/tcp \
+	-v storage_biosoft:/var/www/html/storage/ \
+	-v biosoft_postgres:/var/lib/postgresql/13/main/ \
+	--name ${CONTAINER_NAME} ${IMAGE_NAME}:${IMAGE_VERSION}
+
+init-local: ## Prepare everything for local execution
+	make fix-local-permissions
+	rm -rf node_modules/ vendor/
+	make start-local
+	make composer-install
+	[ -f .env ] || cp .env.example .env && make art-key
+	#todo: change db name
+	#todo: generate random secure password for DB
+	make art-migrate-fresh
+	make art-oc
+	make art-vc
+	make storage-link
+	make npm-install
+	make npm-dev
+	make stop
+
+start-local: ## Run container locally from built image
+	docker run --rm -it -d -p 5432:5432 -p ${PORT}:80/tcp \
+	-v ${PWD}:/var/www/html \
+	-v biosoft_postgres:/var/lib/postgresql/13/main/ \
+	-e WWWUSER=`id -u` \
+	--name ${CONTAINER_NAME} ${IMAGE_NAME}:${IMAGE_VERSION}
+
+stop: ## Stop running container
+	docker stop ${CONTAINER_NAME}
+
+composer-install:  ## Install composer dependencies
+	docker exec -u www-data -it ${CONTAINER_NAME} composer install
+
+composer-update: ## Update composer dependencies
+	docker exec -u www-data -it ${CONTAINER_NAME} composer update
+
+art-migration-create: ## Create migration for new table. Need NAME, TABLE and PACKAGE vars
+	if [ -z $$NAME ]; then echo "var NAME not defined"; exit 1; fi
+	if [ -z $$TABLE ]; then echo "var TABLE not defined"; exit 1; fi
+	if [ -z $$PACKAGE ]; then echo "var PACKAGE not defined"; exit 1; fi
+	docker exec -u www-data -it ${CONTAINER_NAME} \
+	./artisan make:migration $$NAME \
+	--create=$$TABLE \
+	--path=packages/$$PACKAGE/database/migrations
+
+art-migration-alter: ## Create migration for alter table. Need NAME, TABLE and PACKAGE vars
+	if [ -z $$NAME ]; then echo "var NAME not defined"; exit 1; fi
+	if [ -z $$TABLE ]; then echo "var TABLE not defined"; exit 1; fi
+	if [ -z $$PACKAGE ]; then echo "var PACKAGE not defined"; exit 1; fi
+	docker exec -u www-data -it ${CONTAINER_NAME} \
+	./artisan make:migration $$NAME \
+	--table=$$TABLE \
+	--path=packages/$$PACKAGE/database/migrations
+
+art-migrate-refresh: ## Rollback and execute migrations with seeds
+	docker exec -u www-data -it ${CONTAINER_NAME} ./artisan migrate:refresh --seed
+
+art-migrate-fresh: ## Drop tables and execute migrations with seeds
+	docker exec -u www-data -it ${CONTAINER_NAME} ./artisan migrate:fresh --seed --force
+
+fresh-dev: ## Clear local data
+	make art-migrate-fresh
+	make art-oc
+	make dev
+	make npm-dev
+
+art-migrate: ## Execute migrations with seeds
+	docker exec -u www-data -it ${CONTAINER_NAME} ./artisan migrate --seed --force
+
+art-oc: ## Clear cache
+	docker exec -u www-data -it ${CONTAINER_NAME} ./artisan optimize:clear
+
+optimize: ## Clear cache
+	docker exec -u www-data -it ${CONTAINER_NAME} ./artisan optimize:clear
+
+art-vc: ## Compile all blade templates
+	docker exec -u www-data -it ${CONTAINER_NAME} ./artisan view:cache
+
+art-key: ## Generate new application key
+	docker exec -u www-data -it ${CONTAINER_NAME} ./artisan key:generate
+
+root-shell: ## Open container shell as root
+	docker exec -it ${CONTAINER_NAME} bash
+
+shell: ## Open container shell
+	docker exec -u www-data -it ${CONTAINER_NAME} bash
+
+admin:
+	docker exec -it ${CONTAINER_NAME} ./artisan make:admin "${NAME}" ${EMAIL}
+
+npm-install: ## Install NPM dependencies
+	docker exec -u www-data -it ${CONTAINER_NAME} npm install
+
+npm-update: ## Update NPM dependencies
+	docker exec -u www-data -it ${CONTAINER_NAME} npm update
+
+npm-dev: ## Build assets for development
+	docker exec -u www-data -it ${CONTAINER_NAME} npm run dev
+
+npm-watch: ## Watch for changes in assets
+	docker exec -u www-data -it ${CONTAINER_NAME} npm run watch
+
+share:
+	docker run --init beyondcodegmbh/expose-server:latest share http://host.docker.internal:${PORT} \
+                --server-host=laravel-sail.site \
+                --server-port=8080
+
+share-linux:
+	docker run --init beyondcodegmbh/expose-server:latest share http://172.17.0.1:${PORT} \
+				--server-host=laravel-sail.site \
+				--server-port=8080
+
+test: ## Run tests
+	docker exec -u www-data -it ${CONTAINER_NAME} rm -rf reports/
+	make art-oc
+	docker exec -u www-data -it ${PHP_IDE_CONFIG} ${CONTAINER_NAME} ./artisan config:clear --env=testing
+	docker exec -u www-data -e XDEBUG_MODE=debug,coverage ${PHP_IDE_CONFIG} -it ${CONTAINER_NAME} ./artisan test --env=testing --filter= 'Packages\\MetadataGis\\tests\\Feature'
+	docker exec -u www-data -it ${PHP_IDE_CONFIG} ${CONTAINER_NAME} ./artisan config:clear
+
+tinker: ## Execute tinker REPL
+	docker exec -u www-data -it ${CONTAINER_NAME} php artisan tinker
+
+clear-logs: ## Clear all logs
+	docker exec -u www-data -it ${CONTAINER_NAME} rm -rf storage/logs/*.log
+
+xdebug-on:
+	docker exec ${CONTAINER_NAME} bash -c "sed -i 's/^;zend_extension=/zend_extension=/g' /etc/php/8.0/mods-available/xdebug.ini && php -v"
+	docker exec ${CONTAINER_NAME} apache2ctl restart
+
+xdebug-off:
+	docker exec ${CONTAINER_NAME} bash -c "sed -i 's/^zend_extension=/;zend_extension=/g' /etc/php/8.0/mods-available/xdebug.ini && php -v"
+	docker exec ${CONTAINER_NAME} apache2ctl restart
+
+xdebug-status:
+	docker exec ${CONTAINER_NAME} php -v
+
+cypress-install: ## Install Cypress
+	npm install cypress --save-dev
+	make cypress-create-db
+
+cypress-create-db: ## Create Cypress temp DB
+	docker exec -u postgres -t ${CONTAINER_NAME} createdb -O biosoft biosoft_cypress
+	cp .env .env.backup
+	cp .env.cypress .env
+	make art-migrate
+	make art-key
+	mv .env.backup .env
+
+cypress-drop-db: ## Drop Cypress temp DB
+	docker exec -u postgres -t ${CONTAINER_NAME} dropdb biosoft_cypress
+
+cypress-open: ## Open Cypress test runner
+	npx cypress open
+
+cypress-run: ## Run all Cypress tests
+	npx cypress run
+
+fix-local-permissions: ## Change files and directories ownership to current user:group
+	sudo chown -R `whoami`:`id -ng` ./
+
+route-list: ## List all defined routes
+	docker exec -u www-data -it ${CONTAINER_NAME} ./artisan route:list -c
+
+update-ide-helper:
+	docker exec -u www-data -it ${CONTAINER_NAME} ./artisan config:cache
+	docker exec -u www-data -it ${CONTAINER_NAME} ./artisan ide-helper:generate
+	docker exec -u www-data -it ${CONTAINER_NAME} ./artisan ide-helper:meta
+	docker exec -u www-data -it ${CONTAINER_NAME} ./artisan ide-helper:models -N --dir="packages/**/src/Models" --dir="app/Models"
+
+dump-autoload: ## Run composer dump-autoload
+	docker exec -u www-data -it ${CONTAINER_NAME} composer dump-autoload
+
+package: ## Create the basic structure for a new package
+	docker exec -u www-data -it ${CONTAINER_NAME} ./artisan make:package
+	make art-oc
+	make art-migrate
+	make npm-dev
+
+dev: ## Create an admin with instance and menu with all packages
+	docker exec -u www-data -it ${CONTAINER_NAME} ./artisan make:dev
+
+storage-link: ## Make storage directory accessible from the web
+	docker exec -u www-data -it ${CONTAINER_NAME} ./artisan storage:link
+
+geonodo: ## Create an admin with instance and geonodo menu with all packages
+	docker exec -u www-data -it ${CONTAINER_NAME} ./artisan make:geonodo
+
+clear-all: ## Create an admin with instance and geonodo menu with all packages
+	docker exec -it ${CONTAINER_NAME} ./artisan view:clear
+	docker exec -it ${CONTAINER_NAME} ./artisan route:clear
+	docker exec -it ${CONTAINER_NAME} ./artisan cache:clear
+	docker exec -it ${CONTAINER_NAME} ./artisan config:clear
+	docker exec -it ${CONTAINER_NAME} ./artisan config:cache
+	docker exec -it ${CONTAINER_NAME} ./artisan livewire:discover
+	docker exec -it ${CONTAINER_NAME} ./artisan queue:restart
+	make dump-autoload
+
+```
