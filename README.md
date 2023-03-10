@@ -401,3 +401,216 @@ clear-all: ## Create an admin with instance and geonodo menu with all packages
 	make dump-autoload
 
 ```
+
+
+
+## 7. Biosoft web server settings
+
+#### PostgreSQL, Php,
+
+```Dockerfile
+FROM composer:2 AS composer
+
+FROM ubuntu:20.04 as base
+
+LABEL maintainer="Nicol�s Carrasco"
+
+ARG APP_ENV=prod
+
+ENV DEBIAN_FRONTEND noninteractive
+ENV TZ=America/Santiago
+ENV POSTGRES_VERSION 13
+ENV POSTGIS_VERSION 3
+ENV PHP_VERSION 8.0
+
+# Update package lists and upgrade installed packages
+RUN apt-get update \
+    && apt-get upgrade -y 
+
+# Install the following packages without prompting for user confirmation
+RUN apt-get -y --no-install-recommends install git \
+    gnupg \
+    gosu \
+    curl \
+    ca-certificates \
+    zip \
+    unzip \
+    unrar \
+    git \
+    supervisor \
+    sqlite3 \
+    libcap2-bin \
+    libpng-dev \
+    python2 \
+    wget \
+    gdal-bin \
+    libgdal-dev \
+    p7zip-full \
+
+# Create a directory for GnuPG and set appropriate permissions:
+RUN mkdir -p ~/.gnupg \
+    && chmod 600 ~/.gnupg 
+
+# Disable IPv6 in the GnuPG configuration:  
+RUN echo "disable-ipv6" >> ~/.gnupg/dirmngr.conf
+    
+# Add GnuPG keys for the following repositories:
+RUN apt-key adv --homedir ~/.gnupg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys \
+    E5267A6C \
+    C300EE8C \
+    089EBE08314DF160
+    
+# Add repositories for PHP, PostgreSQL, and MapServer
+RUN echo "deb http://ppa.launchpad.net/ondrej/php/ubuntu focal main" > /etc/apt/sources.list.d/ppa_ondrej_php.list \
+    && echo "deb http://apt.postgresql.org/pub/repos/apt focal-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
+    && echo "deb https://ppa.launchpadcontent.net/ubuntugis/ppa/ubuntu focal main" > /etc/apt/sources.list.d/mapserver.list \
+    && echo "deb-src https://ppa.launchpadcontent.net/ubuntugis/ppa/ubuntu focal main" > /etc/apt/sources.list.d/mapserver.list 
+    
+# Add PostgreSQL key and update package lists
+RUN wget --quiet -O - http://apt.postgresql.org/pub/repos/apt/ACCC4CF8.asc | apt-key add - \
+    && curl -fsSL https://deb.nodesource.com/setup_16.x | bash - \
+    && apt-get update 
+
+# Install the following packages without prompting for user confirmation
+RUN apt-get install --no-install-recommends -y \
+    php$PHP_VERSION-cli \
+    php$PHP_VERSION-dev \
+    php$PHP_VERSION-pgsql \
+    php$PHP_VERSION-sqlite3 \
+    php$PHP_VERSION-gd \
+    php$PHP_VERSION-curl \
+    php$PHP_VERSION-memcached \
+    php$PHP_VERSION-imap \
+    php$PHP_VERSION-mysql \
+    php$PHP_VERSION-mbstring \
+    php$PHP_VERSION-xml \
+    php$PHP_VERSION-zip \
+    php$PHP_VERSION-bcmath \
+    php$PHP_VERSION-soap \
+    php$PHP_VERSION-intl \
+    php$PHP_VERSION-readline \
+    php$PHP_VERSION-msgpack \
+    php$PHP_VERSION-igbinary \
+    php$PHP_VERSION-ldap \
+    php$PHP_VERSION-redis \
+    php$PHP_VERSION-xdebug \
+    php$PHP_VERSION-swoole \
+    postgresql-$POSTGRES_VERSION \
+    postgresql-$POSTGRES_VERSION-postgis-$POSTGIS_VERSION \
+    postgresql-$POSTGRES_VERSION-postgis-$POSTGIS_VERSION-scripts \
+    postgresql-$POSTGRES_VERSION-pgrouting \
+    postgresql-client \
+    postgis \
+    apache2 \
+    libapache2-mod-php$PHP_VERSION \
+    libapache2-mod-fcgid \
+    cgi-mapserver mapserver-bin \
+    postgis \
+    nodejs \
+    cron supervisor
+
+# Remove any unnecessary packages and clean up cache
+RUN apt-get -y autoremove \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
+              /tmp/* \
+              /var/tmp/*
+
+# Copia archivos del sistema host a la imagen de Docker que se está creando
+COPY ./.docker/php/xdebug.ini /etc/php/$PHP_VERSION/mods-available/xdebug.ini
+COPY ./.docker/php/php.ini /etc/php/$PHP_VERSION/apache2/conf.d/99-laravel.ini
+COPY ./.docker/apache/biosoft.conf /etc/apache2/sites-available
+COPY ./.docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY ./.docker/crontab /etc/cron.d/crontab
+
+# Esto establece permisos de lectura y escritura para el propietario del archivo y permisos de solo lectura para todos los demás.
+RUN chmod 0644 /etc/cron.d/crontab
+
+# Esto hace que las entradas de crontab en el archivo estén activas y programadas para ejecutarse de acuerdo con sus horarios.
+RUN crontab /etc/cron.d/crontab
+
+# Crea un archivo vacío llamado cron.log
+RUN touch /var/log/cron.log
+
+# Set the working directory for any subsequent RUN
+WORKDIR /var/www/html
+
+# Copy the contents of the current directory into the /var/www/html directory in the Docker container.
+COPY ./ ./
+
+# sets a specific capability on the PHP binary to allow it to bind to privileged ports (port numbers below 1024) without needing to run as root.
+RUN setcap "cap_net_bind_service=+ep" /usr/bin/php8.0 
+
+## Apache settings
+#enables the Apache mod_rewrite module - 
+RUN a2enmod rewrite
+# Disables the default Apache virtual host configuration.
+RUN a2dissite 000-default 
+# Enables the virtual host configuration file
+RUN a2ensite biosoft.conf 
+# Enables the Apache FastCGI Authorization module
+RUN a2enmod authnz_fcgi 
+# Rnables the Apache CGI module to allow the running of scripts
+RUN a2enmod cgi 
+# Restarts the Apache web server to apply the configuration
+RUN /etc/init.d/apache2 restart 
+# Removes the default Apache index page
+RUN rm -f /var/www/html/index.html 
+# Copies a sample environment file to .env
+RUN cp .env.example .env 
+# Creates a directory
+RUN mkdir /mapas 
+# Changes ownership of the /var/www and /mapas directories to the www-data user and group
+RUN chown -R www-data:www-data /var/www /mapas 
+
+# This allows the Docker image to have access to the composer executable
+COPY --from=composer /usr/bin/composer /usr/bin/composer
+
+# First, it creates a PostgreSQL user named 'biosoft' with a password 'secret' and gives it superuser privileges.
+# it creates a database named 'biosoft' owned by the 'biosoft' user.
+# Then it uses the 'gosu' command to run subsequent commands as the user 'www-data',  
+    # Composer dependencies, 
+    # and builds npm dependencies, 
+    # creates a symbolic link to the storage directory, 
+    # generates a Laravel app key, migrates the database with seed data, 
+    # optimizes the Laravel application, 
+    # and caches the views.
+# After that, it removes unnecessary cache directories and node modules to reduce image size. 
+# Finally, it sets the ownership of the '/var/www' directory to the 'www-data' user.
+
+USER postgres
+RUN /etc/init.d/postgresql start \
+    && psql --command "CREATE USER biosoft WITH SUPERUSER PASSWORD 'secret';" \
+    && createdb -O biosoft biosoft
+
+# allow connections from any IP address with a password and listen on all IP addresses
+RUN echo "host all  all    0.0.0.0/0  md5" >> /etc/postgresql/$POSTGRES_VERSION/main/pg_hba.conf \
+    && echo "listen_addresses='*'" >> /etc/postgresql/$POSTGRES_VERSION/main/postgresql.conf
+RUN tail -f /var/log/postgresql/postgresql-<version>-main.log
+
+EXPOSE 80
+EXPOSE 5432
+
+USER root
+
+RUN gosu www-data composer update \
+    && gosu www-data composer install \
+    && gosu www-data npm install \
+    && gosu www-data npm run prod \
+    && gosu www-data php artisan storage:link \
+    && php artisan key:generate \
+    && ./artisan migrate --seed --force \
+    && gosu www-data php artisan optimize \
+    && gosu www-data php artisan view:cache \
+    && rm -rf /var/www/.cache /var/www/.npm /var/www/.composer /var/www/html/node_modules \
+    && chown -R www-data:www-data /var/www
+
+COPY ./.docker/entry-point.sh /usr/local/bin/entry-point.sh
+RUN chmod +x /usr/local/bin/entry-point.sh
+
+VOLUME /var/lib/postgresql/13/main/
+
+ENTRYPOINT [ "/usr/local/bin/entry-point.sh" ]
+
+
+```
