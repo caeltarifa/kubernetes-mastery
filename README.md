@@ -404,7 +404,7 @@ clear-all: ## Create an admin with instance and geonodo menu with all packages
 
 
 
-## 7. Biosoft web server settings and packages
+## 7. Biosoft web server settings and packages into Dockerfile
 
 #### Composer, Ubuntu 20.04, PHP 8.0, PostgreSQL 13, PostGIS, Node.js, Apache 2, Supervisord, Cron, Git, GnuPG, CURL, GDAL, MapServer. Xdebug, Swoole
 
