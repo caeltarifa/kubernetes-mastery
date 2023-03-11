@@ -413,7 +413,7 @@ FROM composer:2 AS composer
 
 FROM ubuntu:20.04 as base
 
-LABEL maintainer="Nicol�s Carrasco"
+LABEL maintainer="Biosoft - CT"
 
 ARG APP_ENV=prod
 
