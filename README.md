@@ -413,7 +413,7 @@ FROM composer:2 AS composer
 
 FROM ubuntu:20.04 as base
 
-LABEL maintainer="Biosoft - CT"
+LABEL maintainer="Nicol�s Carrasco"
 
 ARG APP_ENV=prod
 
@@ -445,7 +445,7 @@ RUN apt-get -y --no-install-recommends install git \
     wget \
     gdal-bin \
     libgdal-dev \
-    p7zip-full \
+    p7zip-full 
 
 # Create a directory for GnuPG and set appropriate permissions:
 RUN mkdir -p ~/.gnupg \
@@ -534,8 +534,6 @@ RUN touch /var/log/cron.log
 
 # Set the working directory for any subsequent RUN
 WORKDIR /var/www/html
-
-# Copy the contents of the current directory into the /var/www/html directory in the Docker container.
 COPY ./ ./
 
 # sets a specific capability on the PHP binary to allow it to bind to privileged ports (port numbers below 1024) without needing to run as root.
@@ -543,7 +541,7 @@ RUN setcap "cap_net_bind_service=+ep" /usr/bin/php8.0
 
 ## Apache settings
 #enables the Apache mod_rewrite module - 
-RUN a2enmod rewrite
+RUN a2enmod rewrite 
 # Disables the default Apache virtual host configuration.
 RUN a2dissite 000-default 
 # Enables the virtual host configuration file
@@ -565,45 +563,49 @@ RUN chown -R www-data:www-data /var/www /mapas
 
 # This allows the Docker image to have access to the composer executable
 COPY --from=composer /usr/bin/composer /usr/bin/composer
+#COPY --from=composer /app/vendor /var/www/html/vendor
 
-# First, it creates a PostgreSQL user named 'biosoft' with a password 'secret' and gives it superuser privileges.
-# it creates a database named 'biosoft' owned by the 'biosoft' user.
-# Then it uses the 'gosu' command to run subsequent commands as the user 'www-data',  
-    # Composer dependencies, 
-    # and builds npm dependencies, 
-    # creates a symbolic link to the storage directory, 
-    # generates a Laravel app key, migrates the database with seed data, 
-    # optimizes the Laravel application, 
-    # and caches the views.
-# After that, it removes unnecessary cache directories and node modules to reduce image size. 
-# Finally, it sets the ownership of the '/var/www' directory to the 'www-data' user.
 
+# Switch to the postgres user and create a new database
 USER postgres
-RUN /etc/init.d/postgresql start \
-    && psql --command "CREATE USER biosoft WITH SUPERUSER PASSWORD 'secret';" \
-    && createdb -O biosoft biosoft
+
+RUN /etc/init.d/postgresql start && \
+    psql --command "CREATE USER biosoft WITH SUPERUSER PASSWORD 'secret';" && \
+    createdb -O biosoft biosoft
 
 # allow connections from any IP address with a password and listen on all IP addresses
-RUN echo "host all  all    0.0.0.0/0  md5" >> /etc/postgresql/$POSTGRES_VERSION/main/pg_hba.conf \
-    && echo "listen_addresses='*'" >> /etc/postgresql/$POSTGRES_VERSION/main/postgresql.conf
-RUN tail -f /var/log/postgresql/postgresql-<version>-main.log
+RUN echo "host all all 0.0.0.0/0 md5" >> /etc/postgresql/13/main/pg_hba.conf && \
+    echo "listen_addresses='*'" >> /etc/postgresql/13/main/postgresql.conf
 
-EXPOSE 80
+# Expose the PostgreSQL port
 EXPOSE 5432
 
+EXPOSE 80
+
+
+# Update and install dependencies as www-data user
+USER www-data
+RUN composer update \
+    && composer install \
+    && npm install \
+    && npm run prod \
+    && php artisan storage:link
+
+USER postgres
+# Generate the Laravel application key and run the database migrations
+RUN php artisan key:generate && \
+    php artisan migrate --seed --force && \
+    php artisan optimize && \
+    php artisan view:cache
+
+# Generate key and migrate as root user
 USER root
 
-RUN gosu www-data composer update \
-    && gosu www-data composer install \
-    && gosu www-data npm install \
-    && gosu www-data npm run prod \
-    && gosu www-data php artisan storage:link \
-    && php artisan key:generate \
-    && ./artisan migrate --seed --force \
-    && gosu www-data php artisan optimize \
-    && gosu www-data php artisan view:cache \
-    && rm -rf /var/www/.cache /var/www/.npm /var/www/.composer /var/www/html/node_modules \
-    && chown -R www-data:www-data /var/www
+# Switch to www-data user and group for all of the following commands
+RUN chown -R www-data:www-data /var/www
+
+# Clean up as root user
+RUN rm -rf /var/www/.cache /var/www/.npm /var/www/.composer /var/www/html/node_modules
 
 COPY ./.docker/entry-point.sh /usr/local/bin/entry-point.sh
 RUN chmod +x /usr/local/bin/entry-point.sh
