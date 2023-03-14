@@ -613,6 +613,15 @@ RUN chmod +x /usr/local/bin/entry-point.sh
 VOLUME /var/lib/postgresql/13/main/
 
 ENTRYPOINT [ "/usr/local/bin/entry-point.sh" ]
-
-
 ```
+
+
+## 8. Biosoft Core and its goals regarding Kubernetes usage
+
+* Resource management: can allocate resources to Biosoft core containers based on demand, ensuring that applications have the resources they need to run smoothly.
+* Scaling: allows for horizontal scaling of containerized applications, making it easier to handle increased traffic or workload.
+* Self-healing: can automatically restart Biosoft containers or create new ones if they fail, helping to ensure application availability.
+* Machine Learning: can be used to manage machine learning workloads, such as training and inference. It can help ensure that these workloads have the resources they need to run effectively and can be easily scaled as needed.
+
+
+
