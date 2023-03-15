@@ -117,6 +117,10 @@ rm minikube-linux-amd64
 ```bash
 minikube version
 ```
+#### Once Minikube is installed, it may execute default setting by
+```bash
+minikube start
+```
 #### Additionally, in order to verify if Minikube is running, use this command
 ```bash
 minikube status
