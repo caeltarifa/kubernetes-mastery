@@ -98,6 +98,32 @@ sudo kubectl apply -f https://docs.projectcalico.org/v3.9/manifests/calico.yaml
 ```bash
 sudo kubectl get pods --all-namespaces
 ```
+### 2.1. Install Minikube on  *Ubuntu:AWS Lightsail*:
+
+#### Install dependencies required by Minikube
+```bash
+sudo apt-get update && sudo apt-get install -y curl wget
+```
+#### Previously if your architecture is x86_64, then can download the Minikube binary from the official Minikube website
+```bash
+curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+```
+#### So, Minikube will be installed by running
+```bash
+sudo install minikube-linux-amd64 /usr/local/bin/minikube
+rm minikube-linux-amd64
+```
+#### It is now installed, and to verify run. Therefore, this should  display the version of Minikube installed.
+```bash
+minikube version
+```
+#### Additionally, in order to verify if Minikube is running, use this command
+```bash
+minikube status
+```
+#### Finally, it will let us to interact with the Kubernetes API using the ``` kubectl ```
+
+
 
 ## 3. Some commonly used commands to monitor the state of Kubernetes:
 ```kubectl get nodes```: This command displays the status of all the nodes in the Kubernetes cluster.
