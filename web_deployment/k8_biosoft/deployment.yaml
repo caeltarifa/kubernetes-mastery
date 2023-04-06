@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: biosoftv8
+  labels:
+    app: biosoftv8
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: biosoftv8
+  template:
+    metadata:
+      labels:
+        app: biosoftv8
+    spec:
+      containers:
+      - name: biosoftv8
+        image: docker.io/caeltarifa/biosoftv8:latest
+        ports:
+        - containerPort: 80
