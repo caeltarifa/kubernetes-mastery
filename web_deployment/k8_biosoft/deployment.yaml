@@ -16,6 +16,6 @@ spec:
     spec:
       containers:
       - name: biosoftv8
-        image: docker.io/caeltarifa/biosoftv8:latest
+        image: docker.io/repository_account/biosoftv8:latest
         ports:
         - containerPort: 80
