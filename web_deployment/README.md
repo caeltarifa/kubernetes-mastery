@@ -34,13 +34,13 @@ docker push docker.io/my-repo/biosoft-image
 The following AWS services are used to deploy the Biosoftv8 application:
 
 - Amazon Elastic Kubernetes Service (EKS) to manage the Kubernetes cluster
-- Amazon Elastic Container Registry (ECR) to store the Docker containers
+- Docker Container Registry (DCR) to store the Docker containers
 - Amazon Elastic Compute Cloud (EC2) and AWS Fargate to serve as load balancers
 - To deploy the Biosoftv8 application, follow these steps:
 
 **Create an EKS cluster in your AWS account**.
 - Install the kubectl command-line tool and configure it to connect to your EKS cluster.
-- Create an ECR repository to store the Docker images.
+- Create an DCR repository to store the Docker images.
 - Build the Docker image for the Biosoftv8 application and push it to the ECR repository.
 - Apply the Kubernetes configuration files in this repository to deploy the Biosoftv8 application.
 - Kubernetes Configuration
