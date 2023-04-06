@@ -13,14 +13,14 @@ This project is a sample application built with PHP and Laravel. It demonstrates
 - Getting Started
 
 ## Getting Started
-1. Clone the repository (ask for access):
+1. Clone the repository (ask for credentials):
 ```bash 
 git clone https://bitbucket.org/BiosoftCL/biosoft-core/src/
 ```
 2. Build the Docker image:
 
 ```bash
-docker build -t yourproject .
+docker build -t biosoft_image .
 ```
 
 3. Push the Docker image:
