@@ -50,6 +50,7 @@ The `deployment.yaml` file contains the Kubernetes Deployment configuration for 
 The `autoscaler.yaml` file contains the Kubernetes Horizontal Pod Autoscaler configuration for the Biosoftv8 application. It specifies the scaling rules based on CPU utilization.
 
 The `service.yaml` file contains the Kubernetes Service configuration for the Biosoftv8 application. It specifies the load balancer type and the port to expose.
+![biosoft kubernetes](https://user-images.githubusercontent.com/23003922/234743335-ec67152a-8a50-462f-ad73-8899f10740ad.jpg)
 
 ## Deployment
 
